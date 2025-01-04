@@ -17,14 +17,16 @@ import (
 
 func ImplementServiceStruct(entityName string, file *ast.File, reimplement bool) {
 	serviceName := entityName + "Service"
-	isServiceStructDeclarated := false
+	isServiceStructDefined := false
 	var insertPos int
+	var decls []ast.Decl
 
 	for i, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
 			continue
 		}
+		decls = append(decls, decl)
 		if genDecl.Tok == token.IMPORT {
 			insertPos = i + 1
 			continue
@@ -40,14 +42,16 @@ func ImplementServiceStruct(entityName string, file *ast.File, reimplement bool)
 			}
 			if _, ok := typeSpec.Type.(*ast.StructType); ok {
 				if typeSpec.Name != nil && typeSpec.Name.Name == serviceName {
-					isServiceStructDeclarated = true
+					isServiceStructDefined = true
+					if reimplement {
+						decls = decls[:1]
+					}
 				}
 			}
-
 		}
 	}
 
-	if isServiceStructDeclarated && !reimplement {
+	if isServiceStructDefined && !reimplement {
 		return
 	}
 
@@ -63,7 +67,7 @@ func ImplementServiceStruct(entityName string, file *ast.File, reimplement bool)
 		},
 	}
 
-	file.Decls = append(file.Decls[:insertPos], append([]ast.Decl{serviceStruct}, file.Decls[insertPos:]...)...)
+	file.Decls = append(decls[:insertPos], append([]ast.Decl{serviceStruct}, decls[insertPos:]...)...)
 }
 
 func importExists(fset *token.FileSet, file *ast.File, importPath string) bool {
@@ -146,6 +150,8 @@ func ImplementService(mainPkgPath string, modelName string, reimplement bool) er
 		log.Fatalf("Error occurred to writing changes in `%s` service file: %v", modelName, err)
 		return err
 	}
+
+	defer file.Close()
 
 	return nil
 }
