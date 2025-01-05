@@ -148,6 +148,7 @@ func ImplementModelAlias(modelName string, file *ast.File) {
 				Name: &ast.Ident{
 					Name: modelName,
 				},
+				Assign: 1, // quick and dirty
 				Type: &ast.Ident{
 					Name: aliasTypeStandard,
 				},
@@ -280,7 +281,7 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 	if reimplement || !methodImplemented {
 		file.Decls = append(decls, methodDecl)
 	}
-	
+
 	return nil
 }
 
