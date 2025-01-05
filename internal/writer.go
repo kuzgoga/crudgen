@@ -217,6 +217,7 @@ func MethodCodeToDeclaration(methodCode string) (ast.FuncDecl, error) {
 		methodDecl = *funcDecl
 		return false
 	})
+
 	return methodDecl, nil
 }
 
@@ -281,6 +282,21 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 	if reimplement || !methodImplemented {
 		file.Decls = append(decls, methodDecl)
 	}
+
+	// Reload AST: fix issues with syntax 'hallucinations'
+	// Write AST
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, token.NewFileSet(), file); err != nil {
+		return err
+	}
+
+	// Load AST
+	formattedFile, err := parser.ParseFile(token.NewFileSet(), "", buf.String(), parser.ParseComments)
+	if err != nil {
+		return err
+	}
+
+	*file = *formattedFile
 
 	return nil
 }
