@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crudgen/internal"
 	"flag"
+	"git.gogacoder.ru/NTO/crudgen/internal"
 	"log"
 	"path/filepath"
 )
