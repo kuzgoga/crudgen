@@ -228,7 +228,7 @@ func ImplementCrudMethods(modelName string, serviceName string, file *ast.File, 
 		EntityPlural: ToPlural(modelName),
 	}
 
-	for _, methodName := range []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, CountMethod} {
+	for _, methodName := range []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod} {
 		methodCode := GenerateCrudMethodCode(methodName, templateContext)
 		methodDecl, err := MethodCodeToDeclaration(methodCode)
 		if err != nil {
