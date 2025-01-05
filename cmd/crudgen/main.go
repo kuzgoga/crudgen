@@ -3,7 +3,6 @@ package main
 import (
 	"crudgen/internal"
 	"flag"
-	"fmt"
 	"log"
 	"path/filepath"
 )
@@ -15,10 +14,9 @@ func ImplementServices(mainPkgDir string, reimplement bool) {
 		return
 	}
 
-	fmt.Printf("Found models: %#v\n", modelsNames)
-	
+	log.Printf("Found models: %v\n", modelsNames)
+
 	for _, modelName := range modelsNames {
-		log.Print(modelName)
 		err := internal.ImplementService(mainPkgDir, modelName, reimplement)
 		if err != nil {
 			log.Printf("Error implement service for model %s: %s\n", modelName, err)

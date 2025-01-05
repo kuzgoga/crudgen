@@ -15,8 +15,8 @@ import (
 	"golang.org/x/tools/go/ast/astutil"
 )
 
-func ImplementServiceStruct(entityName string, file *ast.File, reimplement bool) {
-	serviceName := entityName + "Service"
+func ImplementServiceStruct(modelName string, file *ast.File, reimplement bool) {
+	serviceName := modelName + "Service"
 	isServiceStructDefined := false
 	var insertPos int
 	var decls []ast.Decl
@@ -68,6 +68,94 @@ func ImplementServiceStruct(entityName string, file *ast.File, reimplement bool)
 	}
 
 	file.Decls = append(decls[:insertPos], append([]ast.Decl{serviceStruct}, decls[insertPos:]...)...)
+}
+
+func ImplementModelAlias(modelName string, file *ast.File) {
+	isAliasDefined := false
+	aliasTypeStandard := fmt.Sprintf("models.%s", CapitalizeFirst(modelName))
+	var insertPos int
+	var decls []ast.Decl
+
+	for i, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		decls = append(decls, decl)
+		if genDecl.Tok == token.IMPORT {
+			insertPos = i + 1
+			continue
+		}
+
+		if genDecl.Tok != token.TYPE {
+			continue
+		}
+		if len(genDecl.Specs) != 1 {
+			continue
+		}
+
+		if typeSpec, ok := genDecl.Specs[0].(*ast.TypeSpec); ok {
+			if typeSpec.Name != nil && typeSpec.Name.Name == modelName {
+				if linkedType, ok := typeSpec.Type.(*ast.SelectorExpr); ok {
+					pkg, ok := linkedType.X.(*ast.Ident)
+					if !ok {
+						log.Printf("Defined alias `%s` with unknown type", typeSpec.Name)
+						decls = decls[:1]
+						continue
+					}
+
+					if linkedType.Sel == nil {
+						log.Printf("Defined alias `%s` with unknown type", typeSpec.Name)
+						decls = decls[:1]
+						continue
+					}
+
+					if pkg.Name != "models" {
+						log.Printf(
+							"Defined alias `%s` with wrong type: package `%s`, should be `models`",
+							typeSpec.Name,
+							pkg,
+						)
+						decls = decls[:1]
+						continue
+					}
+
+					if linkedType.Sel.Name != modelName {
+						log.Printf(
+							"Defined alias `%s` with wrong type: models.%s, should be `%s`",
+							typeSpec.Name,
+							linkedType.Sel.Name,
+							aliasTypeStandard,
+						)
+						decls = decls[:1]
+						continue
+					}
+					isAliasDefined = true
+				} else {
+					log.Printf("Defined alias %s with unknown type", typeSpec.Name)
+					decls = decls[:1]
+				}
+			}
+		}
+	}
+
+	typeAlias := ast.GenDecl{
+		Tok: token.TYPE,
+		Specs: []ast.Spec{
+			&ast.TypeSpec{
+				Name: &ast.Ident{
+					Name: modelName,
+				},
+				Type: &ast.Ident{
+					Name: aliasTypeStandard,
+				},
+			},
+		},
+	}
+
+	if !isAliasDefined {
+		file.Decls = append(decls[:insertPos], append([]ast.Decl{&typeAlias}, decls[insertPos:]...)...)
+	}
 }
 
 func importExists(fset *token.FileSet, file *ast.File, importPath string) bool {
@@ -137,6 +225,7 @@ func ImplementService(mainPkgPath string, modelName string, reimplement bool) er
 	if err != nil {
 		return err
 	}
+	ImplementModelAlias(modelName, serviceFile)
 	ImplementServiceStruct(modelName, serviceFile, reimplement)
 
 	file, err := os.Create(filePath)
