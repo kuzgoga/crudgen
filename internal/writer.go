@@ -280,7 +280,20 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 	}
 
 	if reimplement || !methodImplemented {
-		file.Decls = append(decls, methodDecl)
+		file.Decls = append(
+			decls,
+			&ast.FuncDecl{
+				Doc:  methodDecl.Doc,
+				Recv: methodDecl.Recv,
+				Name: methodDecl.Name,
+				Type: methodDecl.Type,
+				Body: &ast.BlockStmt{
+					Lbrace: token.NoPos,
+					List:   methodDecl.Body.List,
+					Rbrace: token.NoPos,
+				},
+			},
+		)
 	}
 
 	// Reload AST: fix issues with syntax 'hallucinations'

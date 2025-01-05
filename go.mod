@@ -1,4 +1,4 @@
-module crudgen
+module git.gogacoder.ru/NTO/crudgen
 
 go 1.23
 
