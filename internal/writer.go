@@ -69,10 +69,6 @@ func ImplementServiceStruct(modelName string, file *dst.File, reimplement bool) 
 	}
 
 	file.Decls = append(decls[:insertPos], append([]dst.Decl{serviceStruct}, decls[insertPos:]...)...)
-
-	if err := ReloadAst(file); err != nil {
-		log.Fatalf(err.Error())
-	}
 }
 
 func ImplementModelAlias(modelName string, file *dst.File) {
@@ -162,9 +158,6 @@ func ImplementModelAlias(modelName string, file *dst.File) {
 	if !isAliasDefined {
 		file.Decls = append(decls[:insertPos], append([]dst.Decl{&typeAlias}, decls[insertPos:]...)...)
 	}
-	if err := ReloadAst(file); err != nil {
-		log.Fatalf(err.Error())
-	}
 }
 
 func importExists(file *dst.File, importPath string) bool {
@@ -246,15 +239,8 @@ func ImplementCrudMethods(modelName string, serviceName string, file *dst.File, 
 		if err != nil {
 			return err
 		}
-		if err := ReloadAst(file); err != nil {
-			return err
-		}
 	}
 
-	return nil
-}
-
-func ReloadAst(_ *dst.File) error {
 	return nil
 }
 
@@ -305,10 +291,6 @@ func ImplementMethod(file *dst.File, methodDecl *dst.FuncDecl, reimplement bool)
 				},
 			},
 		)
-	}
-
-	if err := ReloadAst(file); err != nil {
-		return err
 	}
 
 	return nil
