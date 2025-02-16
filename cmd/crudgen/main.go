@@ -25,6 +25,7 @@ func ImplementServices(mainPkgDir string, reimplement bool) {
 }
 
 func main() {
+	log.SetFlags(0)
 	projectPath := flag.String("p", ".", "project path")
 	reimplement := flag.Bool("f", false, "pass -f to allow tool to overwrite exist functions and service structure")
 	flag.Parse()

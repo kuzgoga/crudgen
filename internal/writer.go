@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"html/template"
 	"log"
@@ -14,17 +12,18 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/tools/go/ast/astutil"
+	"github.com/dave/dst"
+	"github.com/dave/dst/decorator"
 )
 
-func ImplementServiceStruct(modelName string, file *ast.File, reimplement bool) {
+func ImplementServiceStruct(modelName string, file *dst.File, reimplement bool) {
 	serviceName := modelName + "Service"
 	isServiceStructDefined := false
 	var insertPos int
-	var decls []ast.Decl
+	var decls []dst.Decl
 
 	for i, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
+		genDecl, ok := decl.(*dst.GenDecl)
 		if !ok {
 			continue
 		}
@@ -38,15 +37,15 @@ func ImplementServiceStruct(modelName string, file *ast.File, reimplement bool) 
 		}
 
 		for _, spec := range genDecl.Specs {
-			typeSpec, ok := spec.(*ast.TypeSpec)
+			typeSpec, ok := spec.(*dst.TypeSpec)
 			if !ok {
 				continue
 			}
-			if _, ok := typeSpec.Type.(*ast.StructType); ok {
+			if _, ok := typeSpec.Type.(*dst.StructType); ok {
 				if typeSpec.Name != nil && typeSpec.Name.Name == serviceName {
 					isServiceStructDefined = true
 					if reimplement {
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 					}
 				}
 			}
@@ -57,29 +56,33 @@ func ImplementServiceStruct(modelName string, file *ast.File, reimplement bool) 
 		return
 	}
 
-	serviceStruct := &ast.GenDecl{
+	serviceStruct := &dst.GenDecl{
 		Tok: token.TYPE,
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: ast.NewIdent(serviceName),
-				Type: &ast.StructType{
-					Fields: &ast.FieldList{},
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: dst.NewIdent(serviceName),
+				Type: &dst.StructType{
+					Fields: &dst.FieldList{},
 				},
 			},
 		},
 	}
 
-	file.Decls = append(decls[:insertPos], append([]ast.Decl{serviceStruct}, decls[insertPos:]...)...)
+	file.Decls = append(decls[:insertPos], append([]dst.Decl{serviceStruct}, decls[insertPos:]...)...)
+
+	if err := ReloadAst(file); err != nil {
+		log.Fatalf(err.Error())
+	}
 }
 
-func ImplementModelAlias(modelName string, file *ast.File) {
+func ImplementModelAlias(modelName string, file *dst.File) {
 	isAliasDefined := false
 	aliasTypeStandard := fmt.Sprintf("models.%s", CapitalizeFirst(modelName))
 	var insertPos int
-	var decls []ast.Decl
+	var decls []dst.Decl
 
 	for i, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
+		genDecl, ok := decl.(*dst.GenDecl)
 		if !ok {
 			continue
 		}
@@ -96,19 +99,19 @@ func ImplementModelAlias(modelName string, file *ast.File) {
 			continue
 		}
 
-		if typeSpec, ok := genDecl.Specs[0].(*ast.TypeSpec); ok {
+		if typeSpec, ok := genDecl.Specs[0].(*dst.TypeSpec); ok {
 			if typeSpec.Name != nil && typeSpec.Name.Name == modelName {
-				if linkedType, ok := typeSpec.Type.(*ast.SelectorExpr); ok {
-					pkg, ok := linkedType.X.(*ast.Ident)
+				if linkedType, ok := typeSpec.Type.(*dst.SelectorExpr); ok {
+					pkg, ok := linkedType.X.(*dst.Ident)
 					if !ok {
 						log.Printf("Defined alias `%s` with unknown type", typeSpec.Name)
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 						continue
 					}
 
 					if linkedType.Sel == nil {
 						log.Printf("Defined alias `%s` with unknown type", typeSpec.Name)
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 						continue
 					}
 
@@ -118,7 +121,7 @@ func ImplementModelAlias(modelName string, file *ast.File) {
 							typeSpec.Name,
 							pkg,
 						)
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 						continue
 					}
 
@@ -129,27 +132,27 @@ func ImplementModelAlias(modelName string, file *ast.File) {
 							linkedType.Sel.Name,
 							aliasTypeStandard,
 						)
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 						continue
 					}
 					isAliasDefined = true
 				} else {
 					log.Printf("Defined alias %s with unknown type", typeSpec.Name)
-					decls = decls[:1]
+					decls = decls[:len(decls)-1]
 				}
 			}
 		}
 	}
 
-	typeAlias := ast.GenDecl{
+	typeAlias := dst.GenDecl{
 		Tok: token.TYPE,
-		Specs: []ast.Spec{
-			&ast.TypeSpec{
-				Name: &ast.Ident{
+		Specs: []dst.Spec{
+			&dst.TypeSpec{
+				Name: &dst.Ident{
 					Name: modelName,
 				},
-				Assign: 1, // quick and dirty
-				Type: &ast.Ident{
+				Assign: true, // quick and dirty
+				Type: &dst.Ident{
 					Name: aliasTypeStandard,
 				},
 			},
@@ -157,28 +160,31 @@ func ImplementModelAlias(modelName string, file *ast.File) {
 	}
 
 	if !isAliasDefined {
-		file.Decls = append(decls[:insertPos], append([]ast.Decl{&typeAlias}, decls[insertPos:]...)...)
+		file.Decls = append(decls[:insertPos], append([]dst.Decl{&typeAlias}, decls[insertPos:]...)...)
+	}
+	if err := ReloadAst(file); err != nil {
+		log.Fatalf(err.Error())
 	}
 }
 
-func importExists(fset *token.FileSet, file *ast.File, importPath string) bool {
-	for _, group := range astutil.Imports(fset, file) {
-		for _, imp := range group {
-			if imp.Name == nil && imp.Path.Value == `"`+importPath+`"` {
-				return true
-			}
+func importExists(file *dst.File, importPath string) bool {
+	for _, imp := range file.Imports {
+		if imp.Path.Value == `"`+importPath+`"` {
+			return true
 		}
 	}
 	return false
 }
 
-func MaintainImports(fileSet *token.FileSet, file *ast.File) error {
+func MaintainImports(file *dst.File) error {
 	for _, importPath := range ServiceImports {
-		if !importExists(fileSet, file, importPath) {
-			if !astutil.AddImport(fileSet, file, importPath) {
-				err := fmt.Sprintf("%s: Failed to add import: %s", fileSet.Position(file.Pos()), importPath)
-				return errors.New(err)
-			}
+		if !importExists(file, importPath) {
+			file.Imports = append(file.Imports, &dst.ImportSpec{
+				Path: &dst.BasicLit{
+					Kind:  token.STRING,
+					Value: `"` + importPath + `"`,
+				},
+			})
 		}
 	}
 	return nil
@@ -201,27 +207,27 @@ func GenerateCrudMethodCode(methodName string, context CrudTemplatesContext) str
 	return buffer.String()
 }
 
-func MethodCodeToDeclaration(methodCode string) (ast.FuncDecl, error) {
+func MethodCodeToDeclaration(methodCode string) (*dst.FuncDecl, error) {
 	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "src.go", methodCode, parser.SkipObjectResolution)
+	file, err := decorator.ParseFile(fset, "src.go", methodCode, parser.AllErrors)
 	if err != nil {
-		return ast.FuncDecl{}, err
+		return nil, err
 	}
 
-	methodDecl := ast.FuncDecl{}
-	ast.Inspect(file, func(node ast.Node) bool {
-		funcDecl, ok := node.(*ast.FuncDecl)
+	var methodDecl *dst.FuncDecl
+	dst.Inspect(file, func(node dst.Node) bool {
+		funcDecl, ok := node.(*dst.FuncDecl)
 		if !ok {
 			return true
 		}
-		methodDecl = *funcDecl
+		methodDecl = funcDecl
 		return false
 	})
 
 	return methodDecl, nil
 }
 
-func ImplementCrudMethods(modelName string, serviceName string, file *ast.File, reimplement bool) error {
+func ImplementCrudMethods(modelName string, serviceName string, file *dst.File, reimplement bool) error {
 	templateContext := CrudTemplatesContext{
 		ServiceName:  serviceName,
 		EntityType:   modelName,
@@ -231,12 +237,16 @@ func ImplementCrudMethods(modelName string, serviceName string, file *ast.File, 
 	for _, methodName := range []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod} {
 		methodCode := GenerateCrudMethodCode(methodName, templateContext)
 		methodDecl, err := MethodCodeToDeclaration(methodCode)
+		fmt.Printf("%s\n", methodCode)
 		if err != nil {
 			fmt.Println(methodDecl)
 			panic(err)
 		}
-		err = ImplementMethod(file, &methodDecl, reimplement)
+		err = ImplementMethod(file, methodDecl, reimplement)
 		if err != nil {
+			return err
+		}
+		if err := ReloadAst(file); err != nil {
 			return err
 		}
 	}
@@ -244,8 +254,12 @@ func ImplementCrudMethods(modelName string, serviceName string, file *ast.File, 
 	return nil
 }
 
-func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool) error {
-	var decls []ast.Decl
+func ReloadAst(_ *dst.File) error {
+	return nil
+}
+
+func ImplementMethod(file *dst.File, methodDecl *dst.FuncDecl, reimplement bool) error {
+	var decls []dst.Decl
 	methodImplemented := false
 
 	methodStructure := methodDecl.Recv.List[0].Names[0].Name
@@ -255,7 +269,7 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 
 	for _, decl := range file.Decls {
 		decls = append(decls, decl)
-		funcDecl, ok := decl.(*ast.FuncDecl)
+		funcDecl, ok := decl.(*dst.FuncDecl)
 		if !ok {
 			continue
 		}
@@ -272,7 +286,7 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 						methodImplemented = true
 					}
 					if reimplement {
-						decls = decls[:1]
+						decls = decls[:len(decls)-1]
 					}
 				}
 			}
@@ -282,34 +296,20 @@ func ImplementMethod(file *ast.File, methodDecl *ast.FuncDecl, reimplement bool)
 	if reimplement || !methodImplemented {
 		file.Decls = append(
 			decls,
-			&ast.FuncDecl{
-				Doc:  methodDecl.Doc,
+			&dst.FuncDecl{
 				Recv: methodDecl.Recv,
 				Name: methodDecl.Name,
 				Type: methodDecl.Type,
-				Body: &ast.BlockStmt{
-					Lbrace: token.NoPos,
-					List:   methodDecl.Body.List,
-					Rbrace: token.NoPos,
+				Body: &dst.BlockStmt{
+					List: methodDecl.Body.List,
 				},
 			},
 		)
 	}
 
-	// Reload AST: fix issues with syntax 'hallucinations'
-	// Write AST
-	var buf bytes.Buffer
-	if err := printer.Fprint(&buf, token.NewFileSet(), file); err != nil {
+	if err := ReloadAst(file); err != nil {
 		return err
 	}
-
-	// Load AST
-	formattedFile, err := parser.ParseFile(token.NewFileSet(), "", buf.String(), parser.ParseComments)
-	if err != nil {
-		return err
-	}
-
-	*file = *formattedFile
 
 	return nil
 }
@@ -345,13 +345,13 @@ func ImplementService(mainPkgPath string, modelName string, reimplement bool) er
 	}
 
 	fset := token.NewFileSet()
-	serviceFile, err := parser.ParseFile(fset, filePath, nil, parser.ParseComments)
+	serviceFile, err := decorator.ParseFile(fset, filePath, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatalf("Parsing error: %s: %v", mainPkgPath, err)
 		return err
 	}
 
-	err = MaintainImports(fset, serviceFile)
+	err = MaintainImports(serviceFile)
 	if err != nil {
 		return err
 	}
@@ -369,7 +369,7 @@ func ImplementService(mainPkgPath string, modelName string, reimplement bool) er
 		return errors.New(fmt.Sprintf("Error occured to open `%s` service file: %v", modelName, err))
 	}
 
-	err = printer.Fprint(file, fset, serviceFile)
+	err = decorator.Fprint(file, serviceFile)
 	if err != nil {
 		return errors.New(
 			fmt.Sprintf("Error occurred to writing changes in `%s` service file: %v", modelName, err),
