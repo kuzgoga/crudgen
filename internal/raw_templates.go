@@ -1,7 +1,12 @@
 package internal
 
 const CreateRawTemplate = `func (service *{{.ServiceName}}) Create(item {{.EntityType}}) ({{.EntityType}}, error) {
-    err := dal.{{.EntityType}}.Preload(field.Associations).Create(&item)
+    utils.ReplaceEmptySlicesWithNil(&item)
+    err := dal.Author.Create(&item)
+    if err != nil {
+        return item, err
+	}
+    err = utils.AppendAssociations(database.GetInstance(), &item)
     return item, err
 }`
 
@@ -24,13 +29,25 @@ const GetByIdRawTemplate = `func (service *{{.ServiceName}}) GetById(id uint) (*
 }`
 
 const UpdateRawTemplate = `func (service *{{.ServiceName}}) Update(item {{.EntityType}}) ({{.EntityType}}, error) {
-    err := dal.{{.EntityType}}.Preload(field.Associations).Save(&item)
+    utils.ReplaceEmptySlicesWithNil(&item)
+    
+    _, err := dal.Author.Updates(&item)
+	if err != nil {
+		return item, err
+	}
+    
+    err = utils.UpdateAssociations(database.GetInstance(), &item)
+
+    if err != nil {
+		return item, err
+	}
+
     return item, err
 }`
 
-const DeleteRawTemplate = `func (service *{{.ServiceName}}) Delete(item {{.EntityType}}) ({{.EntityType}}, error) {
-    _, err := dal.{{.EntityType}}.Unscoped().Preload(field.Associations).Delete(&item)
-    return item, err
+const DeleteRawTemplate = `func (service *{{.ServiceName}}) Delete(id uint) error {
+    _, err := dal.{{.EntityType}}.Unscoped().Where(dal.{{.EntityType}}.Id.Eq(id)).Delete()
+    return err
 }`
 
 const CountRawTemplate = `func (service *{{.ServiceName}}) Count() (int64, error) {
