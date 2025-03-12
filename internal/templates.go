@@ -8,7 +8,9 @@ type CrudTemplatesContext struct {
 
 var ServiceImports = []string{
 	"app/internal/dal",
+	"app/internal/database",
 	"app/internal/models",
+	"app/internal/utils",
 	"errors",
 	"gorm.io/gen/field",
 	"gorm.io/gorm",
