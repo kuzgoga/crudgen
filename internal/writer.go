@@ -244,7 +244,7 @@ func ImplementCrudMethods(modelName string, serviceName string, file *dst.File, 
 		EntityPlural: ToPlural(modelName),
 	}
 
-	for _, methodName := range []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod} {
+	for _, methodName := range implementedMethods {
 		methodCode := GenerateCrudMethodCode(methodName, templateContext)
 		methodDecl, err := MethodCodeToDeclaration(methodCode)
 		fmt.Printf("%s\n", methodCode)

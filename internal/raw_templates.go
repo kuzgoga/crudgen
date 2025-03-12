@@ -58,3 +58,5 @@ const CountRawTemplate = `func (service *{{.ServiceName}}) Count() (int64, error
 const SortedByOrderTemplate = `func (service *{{.ServiceName}}) SortedByOrder(fieldsSortOrder map[string]string) ([]*{{.EntityType}}, error) {
 	return utils.SortByOrder(fieldsSortOrder, {{.EntityType}}{})
 }`
+
+var implementedMethods = []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod, SortedByOrderMethod}
