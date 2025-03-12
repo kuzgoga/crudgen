@@ -2,7 +2,7 @@ package internal
 
 const CreateRawTemplate = `func (service *{{.ServiceName}}) Create(item {{.EntityType}}) ({{.EntityType}}, error) {
     utils.ReplaceEmptySlicesWithNil(&item)
-    err := dal.Author.Create(&item)
+    err := dal.{{.EntityType}}.Create(&item)
     if err != nil {
         return item, err
 	}
