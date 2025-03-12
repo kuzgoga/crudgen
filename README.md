@@ -3,7 +3,7 @@
 
 ## Install
 ```shell
-go install git.gogacoder.ru/NTO/crudgen/cmd/crudgen@1.0.12
+go install git.gogacoder.ru/NTO/crudgen/cmd/crudgen@v1.0.13
 ```
 
 ## Run
