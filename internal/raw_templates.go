@@ -54,3 +54,7 @@ const CountRawTemplate = `func (service *{{.ServiceName}}) Count() (int64, error
     amount, err := dal.{{.EntityType}}.Count()
     return amount, err
 }`
+
+const SortedByOrderTemplate = `func (service *{{.ServiceName}}) SortedByOrder(fieldsSortOrder map[string]string) ([]*{{.EntityType}}, error) {
+	return utils.SortByOrder(fieldsSortOrder, {{.EntityType}}{})
+}`

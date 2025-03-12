@@ -22,12 +22,14 @@ const GetByIdMethod = "GetById"
 const UpdateMethod = "Update"
 const DeleteMethod = "Delete"
 const CountMethod = "Count"
+const SortedByOrderMethod = "SortedByOrder"
 
 var RawTemplates = map[string]string{
-	CreateMethod:  CreateRawTemplate,
-	GetAllMethod:  GetAllRawTemplate,
-	GetByIdMethod: GetByIdRawTemplate,
-	UpdateMethod:  UpdateRawTemplate,
-	DeleteMethod:  DeleteRawTemplate,
-	CountMethod:   CountRawTemplate,
+	CreateMethod:        CreateRawTemplate,
+	GetAllMethod:        GetAllRawTemplate,
+	GetByIdMethod:       GetByIdRawTemplate,
+	UpdateMethod:        UpdateRawTemplate,
+	DeleteMethod:        DeleteRawTemplate,
+	CountMethod:         CountRawTemplate,
+	SortedByOrderMethod: SortedByOrderTemplate,
 }
