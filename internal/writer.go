@@ -170,9 +170,25 @@ func importExists(file *dst.File, importPath string) bool {
 }
 
 func MaintainImports(file *dst.File) error {
+	var importDecl *dst.GenDecl
+	for _, decl := range file.Decls {
+		if genDecl, ok := decl.(*dst.GenDecl); ok && genDecl.Tok == token.IMPORT {
+			importDecl = genDecl
+			break
+		}
+	}
+
+	if importDecl == nil {
+		importDecl = &dst.GenDecl{
+			Tok:   token.IMPORT,
+			Specs: []dst.Spec{},
+		}
+		file.Decls = append([]dst.Decl{importDecl}, file.Decls...)
+	}
+
 	for _, importPath := range ServiceImports {
 		if !importExists(file, importPath) {
-			file.Imports = append(file.Imports, &dst.ImportSpec{
+			importDecl.Specs = append(importDecl.Specs, &dst.ImportSpec{
 				Path: &dst.BasicLit{
 					Kind:  token.STRING,
 					Value: `"` + importPath + `"`,
@@ -180,6 +196,7 @@ func MaintainImports(file *dst.File) error {
 			})
 		}
 	}
+
 	return nil
 }
 
