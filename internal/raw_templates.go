@@ -55,8 +55,12 @@ const CountRawTemplate = `func (service *{{.ServiceName}}) Count() (int64, error
     return amount, err
 }`
 
-const SortedByOrderTemplate = `func (service *{{.ServiceName}}) SortedByOrder(fieldsSortOrder map[string]string) ([]*{{.EntityType}}, error) {
-	return utils.SortByOrder(fieldsSortOrder, {{.EntityType}}{})
+const SortedByOrderTemplate = `func (service *{{.ServiceName}}) SortedByOrder(fieldsSortingOrder []utils.SortField) ([]*{{.EntityType}}, error) {
+	return utils.SortByOrder(fieldsSortingOrder, {{.EntityType}}{})
 }`
 
-var implementedMethods = []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod, SortedByOrderMethod}
+const SearchByAllStringFields = `func (service *{{.ServiceName}}) SearchByAllTextFields(phrase string) ([]*{{.EntityType}}, error) {
+	return utils.FindPhraseByStringFields[{{.EntityType}}](phrase, {{.EntityType}}{})
+}`
+
+var implementedMethods = []string{CreateMethod, GetAllMethod, GetByIdMethod, UpdateMethod, DeleteMethod, CountMethod, SortedByOrderMethod, SearchByAllStringFields}
