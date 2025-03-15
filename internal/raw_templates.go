@@ -31,7 +31,7 @@ const GetByIdRawTemplate = `func (service *{{.ServiceName}}) GetById(id uint) (*
 const UpdateRawTemplate = `func (service *{{.ServiceName}}) Update(item {{.EntityType}}) ({{.EntityType}}, error) {
     utils.ReplaceEmptySlicesWithNil(&item)
     
-    _, err := dal.Author.Updates(&item)
+    _, err := dal.{{.EntityType}}.Updates(&item)
 	if err != nil {
 		return item, err
 	}
