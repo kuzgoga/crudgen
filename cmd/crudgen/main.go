@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"git.gogacoder.ru/NTO/crudgen/internal"
+	"github.com/kuzgoga/crudgen/internal"
 	"log"
 	"os/exec"
 	"path/filepath"

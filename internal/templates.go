@@ -7,10 +7,10 @@ type CrudTemplatesContext struct {
 }
 
 var ServiceImports = []string{
-	"app/internal/dal",
-	"app/internal/database",
-	"app/internal/models",
-	"app/internal/utils",
+	"github.com/kuzgoga/nto-boilerplate/internal/dal",
+	"github.com/kuzgoga/nto-boilerplate/internal/database",
+	"github.com/kuzgoga/nto-boilerplate/internal/models",
+	"github.com/kuzgoga/nto-boilerplate/internal/utils",
 	"errors",
 	"gorm.io/gen/field",
 	"gorm.io/gorm",
